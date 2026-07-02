@@ -244,5 +244,4 @@ tests/
 ```
 
 ## License
-
-Add a license according to the organization policy before public release.
+MIT
