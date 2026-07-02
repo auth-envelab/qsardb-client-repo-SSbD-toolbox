@@ -172,5 +172,20 @@ Run tests:
 python -m pytest
 ```
 
+## Docker
+Build the image from the repository root:
+```powershell
+docker build -t qsardb-client:local .
+```
+Run the CLI in a container:
+```powershell
+docker run --rm qsardb-client:local --help
+docker run --rm qsardb-client:local catalog --help
+```
+To persist output files (catalogues, predictions, run summaries) on the host, mount a local directory to a working directory in the container:
+```powershell
+docker run --rm -v "${PWD}\runs:/app/runs" qsardb-client:local catalog refresh --out /app/runs/models.json --format json
+```
+
 ## License
 MIT
