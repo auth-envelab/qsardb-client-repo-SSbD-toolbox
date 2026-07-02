@@ -1,0 +1,52 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+build/
+dist/
+site/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local outputs
+runs/
+cache/
+*.log
+
+# Local datasets and generated prediction outputs
+smiles_input.txt
+compounds_pilot.csv
+*.parquet
+*.xlsx
+predictions*.csv
+predictions*.json
+results_wide.csv
+
+# Internal proof/review artifacts
+*_PROOF_REPORT.txt
+*_proof.zip
+*_PACKAGE.zip
+QSARDB_*_PACKAGE.zip
+FINAL_*REPORT*.txt
+final_*.csv
+final_*.txt
+review/
+final_review/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
