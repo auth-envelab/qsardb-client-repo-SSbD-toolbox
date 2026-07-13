@@ -7,9 +7,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Any
 
-import pandas as pd
 from pydantic import ValidationError
 
 from qsardb_client.chemistry.standardize import (
@@ -22,6 +20,7 @@ from qsardb_client.export import (
     records_to_json,
     records_to_parquet,
 )
+from qsardb_client.io_utils import read_compounds_csv, read_models_json
 from qsardb_client.predictor.catalog import (
     PredictorCatalog,
     parse_predictor_catalog_html,
@@ -102,42 +101,6 @@ def _handle_catalog_refresh(args: argparse.Namespace) -> int:
     return 0
 
 
-def _read_compounds_csv(path: Path) -> list[dict[str, str]]:
-    if not path.is_file():
-        raise ValueError(f"input compounds CSV is missing: {path}")
-
-    dataframe = pd.read_csv(path, dtype=str, keep_default_na=False)
-    missing_columns = [
-        column
-        for column in ("compound_id", "input_structure")
-        if column not in dataframe.columns
-    ]
-    if missing_columns:
-        missing = ", ".join(missing_columns)
-        raise ValueError(f"compounds CSV is missing required column(s): {missing}")
-
-    return [
-        {
-            "compound_id": str(row["compound_id"]),
-            "input_structure": str(row["input_structure"]),
-        }
-        for row in dataframe[["compound_id", "input_structure"]].to_dict("records")
-    ]
-
-
-def _read_models_json(path: Path) -> list[QsarDBModelRecord]:
-    if not path.is_file():
-        raise ValueError(f"models JSON is missing: {path}")
-
-    with path.open("r", encoding="utf-8") as file_obj:
-        payload: Any = json.load(file_obj)
-
-    if not isinstance(payload, list):
-        raise ValueError("models JSON must contain a JSON array")
-
-    return [QsarDBModelRecord.model_validate(item) for item in payload]
-
-
 async def _predict_many(
     chemicals: list[ChemicalRecord],
     models: list[QsarDBModelRecord],
@@ -169,12 +132,12 @@ def _write_records(records: list[QsarDBPredictionRecord], args: argparse.Namespa
 
 def _handle_predict(args: argparse.Namespace) -> int:
     try:
-        compound_rows = _read_compounds_csv(args.input)
+        compound_rows = read_compounds_csv(args.input)
         chemicals = normalize_chemical_records(
             compound_rows,
             require_rdkit=args.require_rdkit,
         )
-        models = _read_models_json(args.models)
+        models = read_models_json(args.models)
         predictions = asyncio.run(_predict_many(chemicals, models, args))
         _write_records(predictions, args)
     except (

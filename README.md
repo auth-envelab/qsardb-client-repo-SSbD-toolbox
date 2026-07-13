@@ -12,6 +12,7 @@ Accepted capabilities include:
 - optional chemistry normalization
 - neutral export utilities
 - CLI for catalogue refresh and remote prediction
+- optional HTTP API server exposing catalogue refresh and remote prediction
 - direct archive download from a caller-supplied URL
 - local QDB ZIP structural parser skeleton
 - QDB archive cargo extraction
@@ -172,19 +173,69 @@ Run tests:
 python -m pytest
 ```
 
+## HTTP API server
+An optional FastAPI server exposes the same catalogue refresh and prediction capabilities as the CLI over HTTP, for integration into a broader platform. It carries the same implementation scope as the rest of the package: no SSbD scoring, hazard classification, or regulatory interpretation.
+
+Install the server dependencies and run it:
+```powershell
+python -m pip install -e ".[api]"
+qsardb-client-server
+```
+By default it listens on `0.0.0.0:8000` (override with the `QSARDB_SERVER_HOST` / `QSARDB_SERVER_PORT` environment variables).
+
+Endpoints:
+```text
+GET  /health                    Liveness check
+POST /catalog/refresh           Fetch (or parse an uploaded HTML file for) the predictor catalogue
+POST /predict                   Run remote predictions for uploaded compounds against a single model (N compounds x 1 model)
+POST /predict/batch             Run remote predictions for uploaded compounds against a models JSON array (N compounds x M models)
+```
+Interactive OpenAPI docs are available at `/docs` while the server is running.
+
+Example: refresh the catalogue from the live QsarDB site:
+```bash
+curl -X POST "http://localhost:8000/catalog/refresh" -F "format=json" -o models.json
+```
+
+Example: run predictions against a single model (`handle`, `model_id`, `endpoint`, and `model_type` are one entry from the `/catalog/refresh` response):
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -F "format=csv" \
+  -F "handle=10967/257" \
+  -F "model_id=M1" \
+  -F "endpoint=Intrinsic aqueous solubility" \
+  -F "model_type=regression" \
+  -F "input=@compounds_pilot.csv;type=text/csv" \
+  -o predictions.csv
+```
+
+Example: run predictions against many models at once, mirroring the CLI's `predict` command:
+```bash
+curl -X POST "http://localhost:8000/predict/batch" \
+  -F "format=csv" \
+  -F "concurrency=1" \
+  -F "request_delay_seconds=0.5" \
+  -F "retry_delay_seconds=1.0" \
+  -F "retries=2" \
+  -F "input=@compounds_pilot.csv;type=text/csv" \
+  -F "models=@runs/pilot/models.json;type=application/json" \
+  -o predictions.csv
+```
+Both prediction endpoints accept `format` as `json`, `csv`, or `parquet`, and return the output directly in the response body rather than writing to a shared filesystem. The server does not accept a `cache-dir` path from callers, since it runs as a shared, potentially multi-tenant process — request-level response caching from the CLI is not exposed over HTTP.
+
 ## Docker
 Build the image from the repository root:
 ```powershell
 docker build -t qsardb-client:local .
 ```
-Run the CLI in a container:
+By default, the container runs the HTTP API server:
+```powershell
+docker run --rm -p 8000:8000 qsardb-client:local
+```
+To run the CLI in a container instead, override the default command:
 ```powershell
 docker run --rm qsardb-client:local --help
 docker run --rm qsardb-client:local catalog --help
-```
-To persist output files (catalogues, predictions, run summaries) on the host, mount a local directory to a working directory in the container:
-```powershell
-docker run --rm -v "${PWD}\runs:/app/runs" qsardb-client:local catalog refresh --out /app/runs/models.json --format json
 ```
 
 ## License

@@ -103,12 +103,18 @@ class RemotePredictorClient:
                         model_id=model.model_id,
                         raw_text=response_text,
                     )
-                    return self._ok_record(
+                    try:
+                        return self._ok_record(
                         chemical=chemical,
                         model=model,
                         raw_text=response_text,
-                    )
-
+                        )
+                    except Exception as exc:
+                        return self._error_record(
+                            chemical=chemical, model=model,
+                            error=f"Failed to parse response: {exc}",
+                            raw_text=response_text
+                        )
                 last_error = f"HTTP {response.status_code}: {response_text}"
                 if response.status_code not in _TRANSIENT_STATUSES:
                     return self._error_record(

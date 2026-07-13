@@ -19,9 +19,15 @@ dev = [
     "pytest",
     "pytest-asyncio",
 ]
+api = [
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
+]
 
 [project.scripts]
 qsardb-client = "qsardb_client.cli:main"
+qsardb-client-server = "qsardb_client.server:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]
